@@ -229,9 +229,60 @@ def compare_file_hashes():
         print(f"[-] Could not compare files: {error}\n") 
 
 
+def detect_file_signature():
+    """ Identify common file types using their magic bytes. """
+    import os
+
+    signatures = [
+        ("PE Signatures (EXE/DLL)", b"MZ", (".exe", ".dll", ".sys")),
+        ("PNG Image", b"\x89PNG\r\n\x1a\n", (".png",)),
+        ("JPEG Image", b"\xff\xd8\xff", (".jpg", ".jpeg"))
+        ("PDF Document", b"%PDF-", (".pdf",)),
+        ("ZIP archive", b"PK\x03\x04", (".zip",)),
+        ("GIF Image", b"GIF8", (".gif",)),
+    ]  
+
+    filepath = input("\n[+] Enter file path: ").strip().strip('"')
+
+    if not os.path.isfile(filepath):
+        print("[-] Error: File does not exist or is not a regular file\n")
+        return
+
+    try:
+        with open(filepath, "rb") as file:
+            header = file.read(os)
+
+        extension = os.path.splitext(filepath)[1].lower()
+
+        print("\n[+] File Signature Report")
+        print(f"   File:        {os.path.basename(filepath)}")
+        print(f"   Extension:   {extension or '(none)'}")
+        print(f"   Header:      {header.hex('').upper() or '(empty file)'}")
+
+        detected = None
+        for file_type, magic, valid_extensions in signatures:
+            if header.startswith(magic):
+                detected = (file_type, valid_extensions)
+                break
+
+        if detected:
+            file_type, valid_extensions = detected
+            print(f"    Detected: {file_type}")
+
+            if extension not in valid_extensions:
+                print("[!] Warning: Extensions does not match the detected format.")   
+            else:
+                print("[+] Extensions matches the detected format.")
+        else:
+            print("[?] Unknown file signature; no supported format matched. ")    
+
+        print()
+
+    except OSError as error:
+        print(f"[-] Could not read file: {error}\n")
 
 
-  
+
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
     if not os.path.isfile(filepath):
@@ -386,7 +437,8 @@ def re_toolkit_menu():
         print("6. Disassemble Hex Machine code (requires capstone)")
         print("7. File Integrity Check (SHA-256)")
         print("8. Compare Two files")
-        print("9. Back to Main Menu")
+        print("9. File Signature detection")
+        print("10. Back to Main Menu")
    
         choice = input("\nSelect an option (1-9): ").strip()
 
@@ -403,10 +455,12 @@ def re_toolkit_menu():
         elif choice == "6":
             disassemble_bytes()
         elif choice == "7":
-            file_integrity_check()
+            file_integrity_check() 
         elif choice == "8":
             compare_file_hashes() 
-        elif choice == "9":
+        elif choice =="9":
+            detect_file_signature() 
+        elif choice == "10":  
             break
         else:
             print("[!] Invalid selection, try again!")

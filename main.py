@@ -163,6 +163,75 @@ def analyze_file():
     print(f"    MD5:      {md5_hash.hexdigest()}")
     print(f"    SHA256    {sha256_hash.hexdigest()}\n")    
 
+
+
+def calculate_sha256(filepath, chunk_size=1024 * 1024):
+    """ Calculate a file's SHA-256 hash without loading it all into memory.
+    """
+    digest = hashlib.sha256()
+
+    with open(filepath, "rb") as file:
+        for chunk in iter(lambda: file.read(chunk_size), b""):
+            digest.update(chunk)
+
+    return digest.hexdigest()
+
+
+def file_integrity_check():
+    """ Display a file's size and SHA-256 checksum. """
+    filepath = input("\n[+] Enter file path: ").strip().strip('"')
+
+    if not os.path.isfile(filepath):
+        print("[-] Error: File does not exist or is not a regular file.\n")
+        return
+
+    try:
+        file_size = os.path.getsize(filepath)
+        checksum = calculate_sha256(filepath)
+
+        print("\n[+] File Integrity Report")
+        print(f"    File:     {os.path.basename(filepath)}")
+        print(f"    Size:     {file_size} bytes")
+        print(f"    SHA256:   {checksum}")
+        print("\n[+] Integrity  report compelete.\n")
+
+
+    except (OSError, ValueError) as error:
+        print(f"[-] Could not analyze file: {error}\n")
+
+def compare_file_hashes():
+    """Compare two files using their SHA-256 checksums. """
+    first_path = input("\n[+] Enter path to first file: ").strip().strip('"')
+    second_path = input("[+] Enter path to second file: ").strip().strip('"')
+
+
+    for filepath in (first_path, second_path):
+        if not os.path.isfile(filepath):   
+            print(f"[-] File does not exist or is not recognized: {filepath}\n")
+            return
+
+    try:
+        first_hash = calculate_sha256(first_path)
+        second_hash = calculate_sha256(second_path)
+
+        print("\n[+] File Comparision")
+        print(f"    file 1 SHA256: {first_hash}")
+        print(f"    file 2 SHA256: {second_hash}")
+
+        if first_hash == second_hash:
+            print("[+] Result: Files have identical contents")
+        else:
+            print("[!] Result: Files have different contents")
+
+        print()
+
+    except (OSError, ValueError) as error:
+        print(f"[-] Could not compare files: {error}\n") 
+
+
+
+
+  
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
     if not os.path.isfile(filepath):
@@ -315,9 +384,11 @@ def re_toolkit_menu():
         print("4. Extract IOC Strings (URLs, IPs)")
         print("5. Parse Windows PE Headers (requires pefile)")
         print("6. Disassemble Hex Machine code (requires capstone)")
-        print("7. Back to Main Menu")
-
-        choice = input("\nSelect an option (1-7): ").strip()
+        print("7. File Integrity Check (SHA-256)")
+        print("8. Compare Two files")
+        print("9. Back to Main Menu")
+   
+        choice = input("\nSelect an option (1-9): ").strip()
 
         if choice == "1":
             analyze_file()
@@ -332,6 +403,10 @@ def re_toolkit_menu():
         elif choice == "6":
             disassemble_bytes()
         elif choice == "7":
+            file_integrity_check()
+        elif choice == "8":
+            compare_file_hashes()
+        elif choice == "9":
             break
         else:
             print("[!] Invalid selection, try again!")

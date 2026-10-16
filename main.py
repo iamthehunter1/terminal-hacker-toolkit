@@ -373,12 +373,12 @@ def extract_strings():
 
 def parse_pe_headers():
     if not PEFILE_AVAILABLE:
-        print("\n[!] 'pefile' module is not installed! Run: pip install pefile\n")
+        print("\n[!] 'pefile' module is not installed! Run: pip install pefile.\n")
         return
 
     filepath = input("\n[+] Enter path to windows Pe binary (.exe/dll): ").strip()
     if not os.path.isfile(filepath):
-        print("[-] Error: file does not exist!\n")
+        print("[-] Error: file does not exist.\n")
         return
 
     try:
@@ -409,10 +409,11 @@ def disassemble_bytes():
 
     hex_bytes = input("\n[+] Enter hex bytes to dissamble (e.g. 55488b05b8130000): ").strip()
     try:
-        code = bytes.fromhex(hex_bytes)
+        code = bytes.fromhex(hex_bytes)    
     except ValueError:
         print("[-] Invalid Hex Strings!\n")
         return
+                           
 
     arch = input("[+] Select Architecture (32/64) [default 64]: ").strip()
     mode = CS_MODE_32 if arch == "32" else CS_MODE_64
@@ -424,8 +425,12 @@ def disassemble_bytes():
     print()
 
 
+
+
 # sub menu
 
+       
+          
 def re_toolkit_menu():
     while True:
         print("\n--- Reverse Engineering & Binary Analysis ---")
@@ -436,9 +441,9 @@ def re_toolkit_menu():
         print("5. Parse Windows PE Headers (requires pefile)")
         print("6. Disassemble Hex Machine code (requires capstone)")
         print("7. File Integrity Check (SHA-256)")
-        print("8. Compare Two files")
-        print("9. File Signature detection")
-        print("10. Back to Main Menu")
+        print("8. Compare Two files.")
+        print("9. File Signature detection.")
+        print("10. Back to Main Menu.")
    
         choice = input("\nSelect an option (1-9): ").strip()
 
@@ -456,7 +461,7 @@ def re_toolkit_menu():
             disassemble_bytes()
         elif choice == "7":
             file_integrity_check() 
-        elif choice == "8":
+        elif choice == "8":    
             compare_file_hashes() 
         elif choice =="9":
             detect_file_signature() 
@@ -465,8 +470,10 @@ def re_toolkit_menu():
         else:
             print("[!] Invalid selection, try again!")
 
+
 # main menu
 
+   
 def main():
     while True:
         print_banner()
@@ -475,7 +482,7 @@ def main():
         print(" 3. URL Encoder / Decoder")
         print(" 4. Hash Generator (MD5, SHA1, SHA256)")
         print(" 5. Secure Password / Key Generator")
-        print(" 6. Reverse Engineering & Binary Analysis Toolkit")
+        print(" 6. Reverse Engineering & Binary Analysis Toolkit.")
         print(" 7. Exit")
 
         choice = input("\nSelect an option (1-7): ").strip()
@@ -499,4 +506,8 @@ def main():
             print("\n[!] Invalid Option, try again.\n")
 
 if __name__ == "__main__":
-    main()
+    main()    
+
+
+
+

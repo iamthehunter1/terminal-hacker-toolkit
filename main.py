@@ -7,10 +7,12 @@ import re
 import secrets
 import string
 import sys
+import json
 import urllib.parse
 
 
-# pe headers
+# pe headers  
+
 
 try:
     import pefile
@@ -318,9 +320,9 @@ def yara_lite_scanner():
     
     ).strip()
 
-    print(f"[DEBUG] Scanner continuing; file exists: {os.path.isfile(filepath)}")
+   
 
-    if custom:    
+    if custom:         
         rules.append((
             "CUSTOM_STRING",
             custom.encode("utf-8"),
@@ -374,7 +376,56 @@ def yara_lite_scanner():
 
         findings.sort(key=lambda  finding: finding["offset"])
 
-        print("\n" + "=" * 60)      
+        save_report = input(
+            "[+] Save scan report as JSON (y/n): "   
+        ).strip().lower()
+
+        if save_report == "y":
+            report_path = input(
+                "[+] Enter output filename "
+                "(default scan_report.json): "
+
+            ).strip().strip('"')
+
+        if not report_path:
+            report_path = "scan_report.json"
+
+        report = {   
+            "file": os.path.basename(filepath),
+            "size_bytes": total_read,
+            "rules_checked": len(rules),
+            "total_matches": len(findings),
+            "findings": [
+                {
+                    "name": finding["name"],
+                    "offset": finding["offset"],
+                    "severity": finding["severity"],
+                    "description": finding["description"],
+                    "match": finding["match"].decode(
+                        "utf-8", errors="replace"
+                    ),
+                    "match_hex": finding["match"].hex(),
+                }
+                for finding in findings
+                
+            ],
+
+        }    
+
+        try:
+            with open(
+                report_path, "w", encoding="utf-8"       
+
+            ) as report_file:
+                json.dump(report, report_file, indent=4)
+
+            print(f"[+] Report Saved to {report_path}")
+
+        except OSError as error:
+            print(f"[-] Could not save report: {error}")    
+          
+
+        print("\n" + "=" * 60)         
         print("YARA-LITE  STATIC SCAN REPORT")    
         print("=" * 60)
         print(f"File: {os.path.basename(filepath)}")
@@ -403,19 +454,14 @@ def yara_lite_scanner():
         print(f"[-] Scan failed: {error}\n")     
 
                       
-
-  
-     
-
-
+        
 
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
-    if not os.path.isfile(filepath):
+    if not os.path.isfile(filepath):    
         print("[-] Error: File does not exist!\n")
         return
-     
-
+      
     limit = input("[+] Number of bytes to dump (default 256): ").strip()
     limit = int(limit) if limit.isdigit() else 256
 
@@ -437,7 +483,6 @@ def check_entropy():
     if not os.path.isfile(filepath):
         print("[-] Error: File path does not exist!\n")
         return
- 
  
 
     with open(filepath, "rb") as f:
@@ -479,7 +524,7 @@ def extract_strings():
     url_pattern = re.compile(r"""https?://[^\s'"<>]+""", re.IGNORECASE)  
     
     found_ips = set()
-    found_urls = set()
+    found_urls = set()   
 
     
     with open(filepath, "rb") as f:
@@ -600,7 +645,7 @@ def re_toolkit_menu():
         elif choice == "5":
             parse_pe_headers()
         elif choice == "6":
-            disassemble_bytes()
+            disassemble_bytes()   
         elif choice == "7":
             file_integrity_check() 
         elif choice == "8":    
@@ -655,3 +700,4 @@ if __name__ == "__main__":
 
 
 
+  

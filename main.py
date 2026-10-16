@@ -405,7 +405,7 @@ def re_toolkit_menu():
         elif choice == "7":
             file_integrity_check()
         elif choice == "8":
-            compare_file_hashes()
+            compare_file_hashes() 
         elif choice == "9":
             break
         else:

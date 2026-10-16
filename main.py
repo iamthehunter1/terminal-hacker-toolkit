@@ -138,6 +138,178 @@ def generate_token():
     token = ''.join(secrets.choice(alphabet) for _ in range(length)) 
     print(f"[>] Generated Key: {token}/n")
 
+
+# reverse engineering and malware analysis
+
+def analyze_file():
+    filepath = input("\n[+] Enter Path to target binary/file: ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: file path does not exist!/n")
+        return
+
+    file_size = os.path.getsize(filepath)
+    print(f"\n[>] Target file: {os.path.basename(filepath)}")
+    print(f"   Full Path: {filepath}")
+    print(f"    Size:      {file_size} bytes ({round(file_size / 1024, 2)} KB)")
+
+    md5_hash = hashlib.md5()
+    sha256_hash = hashlib.sha256()
+
+    with open(filepath, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            md5_hash.update(byte_block)
+            sha256_hash.update(byte_block)
+
+    print(f"    MD5:      {md5_hash.hexdigest()}")
+    print(f"    SHA256    {sha256_hash.hexdigest()}\n")    
+
+
+def check_entropy():
+    filepath = input("\n[+] Enter Path to target binary: ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: File path does not exist!\n")
+        return
+
+    with open(filepath, "rb") as f:
+        data = f.read()
+
+    if not data:
+        print("[-] file is empty!\n")
+        return
+
+    entropy = 0
+    for x in range(256):
+        p_x = float(data.count(x)) / len(data)
+        if p_x > 0:
+            entropy += - p_x * math.log2(p_x)
+
+    entropy = round(entropy, 4)
+    print(f"\n[+] Shanon Entropy: {entropy} / 8.0")
+    if entropy > 7.0:
+        print("[!] ALERT: High entropy detected! File is likely PACKED, COMPRESSED, or ENCRYPTED.")
+    elif entropy < 1.0:
+        print("[!] NOTE: Extremely low entropy. File mostly contains repetitive bytes or zeros.")
+    else:
+        print("[+] Normal Entropy: Standard Binary or text data.\n")
+
+    def hex_dump():
+        filepath = input("\n[+] Enter Path to target file: ").strip()
+        if not os.path.isfile(filepath):
+            print("[-] Error: File does not exist!\n")
+            return
+
+    limit = input("[+] Number of bytes to dump (default 256): ").strip()
+    limit = int(limit) if limit.isdigit() else 256
+
+    print(f"\n[+] hex dump (first {limit} bytes):\n ")
+    with open(filepath, "rb") as f:
+        chunk = f.read(limit)
+        for i in range(0, len(chunk) , 16):
+            sub_chunk = chunk[i:i+16]
+            hex_str = ' '.join(f'{b:02X}' for b in sub_chunk)
+            ascii_str = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in sub_chunk)
+            print(f"{i:08X} {hex_str:<48}  |{ascii_str}|")
+        print()
+
+def extract_strings():
+    filepath = input("\n[+] Enter path to target binary: ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: File does not exist!\n")
+        return
+
+    min_len = 4
+    print(f"\n[+] Extracting printable ASCII strings (Min length {min_len})...\n")
+    
+    ip_pattern = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+    url_pattern = re.compile(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+')
+    
+    found_ips = set()
+    found_urls = set()
+
+    with open(filepath, "rb") as f:
+        data = f.read()
+        current = ""
+        for byte in data:
+            if 32 <= byte <= 126:
+                current += chr(byte)
+            else:
+                if len(current) >= min_len:
+                    if ip_pattern.findall(current):
+                        found_ips.update(ip_pattern.findall(current))
+                    if url_pattern.findall(current):
+                        found_urls.update(url_pattern.findall(current))
+                current = ""
+
+    if found_urls:
+        print("[>] Potential URLs Found:")
+        for url in found_urls:
+            print(f"    - {url}")
+    if found_ips:
+        print("[>] Potential IP Addresses Found:")
+        for ip_address in found_ips:  # Fixed variable name here
+            print(f"    - {ip_address}")
+
+    print("\n[+] Extraction complete!\n")
+
+def parse_pe_headers():
+    if not PEFILE_AVAILABLE:
+        print("\n[!] 'pefile' module is not installed! Run: pip install pefile\n")
+        return
+
+    filepath = input("\n[+] Enter path to windows Pe binary (.exe/dll): ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: file does not exist!\n")
+        return
+
+    try:
+        pe = pefile.PE(filepath)
+        print("\n[>] PE Header Analysis:")
+        print(f"    Entry Point (RVA): 0x{pe.OPTIONAL_HEADER.AddressOfEntryPoint:08X}")
+        print(f"    Image Base:        0x{pe.OPTIONAL_HEADER.ImageBase:08X}")
+        print(f"    Number of Sections: {pe.FILE_HEADER.NumberOfSections}")
+
+        print("\n[>] PE Sections: ")
+        for section in pe.sections:
+            sec_name = section.Name.decode('utf-8', errors='ignore').rstrip("\x00")
+            print(f"    - {sec_name:<10} VirtSize: 0x{section.Misc_VirtualSize:08X}  RawSize: 0x{section.SizeOfRawData:08X}  Entropy: {round(section.get_entropy(), 2)}")
+
+        if hasattr(pe, 'DIRECTORY_ENTRY_IMPORT'):
+            print("\n[>] Imported DLLs: ")
+            for entry in pe.DIRECTORY_ENTRY_IMPORT:
+                dll_name = entry.dll.decode('utf-8', errors='ignore')
+                print(f"     -{dll_name} ({len(entry.imports)} imports)")
+            print()
+    except Exception as e:
+        print(f"[!] PE Parsing Error: {e}\n")
+
+def disassemble_bytes():
+    if not CAPSTONE_AVAILABLE:
+        print("\n[!] 'capstone' module is not installed! run: pip install capstone\n")
+        return
+
+    hex_bytes = input("\n[+] Enter hex bytes to dissamble (e.g. 55488b05b8130000): ").strip()
+    try:
+        code = bytes.fromhex(hex_bytes)
+    except ValueError:
+        print("[-] Invalid Hex Strings!\n")
+        return
+
+    arch = input("[+] Select Architecture (32/64) [default 64]: ").strip()
+    mode = CS_MODE_32 if arch == "32" else CS_MODE_64
+
+    md = Cs(CS_ARCH_X86, mode)
+    print(f"\n[>] Disassembly Output ({'x86_32' if arch == '32' else 'x86_64'}):")
+    for insn in md.disasm(code, 0x1000):
+        print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")
+    print()
+
+
+# sub menu
+
+
+
+# main menu
+
 def main():
     while True:
         print_banner()

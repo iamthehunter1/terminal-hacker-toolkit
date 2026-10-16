@@ -163,6 +163,24 @@ def analyze_file():
     print(f"    MD5:      {md5_hash.hexdigest()}")
     print(f"    SHA256    {sha256_hash.hexdigest()}\n")    
 
+def hex_dump():
+    filepath = input("\n[+] Enter path to target file: ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: File does not exist!\n")
+        return
+
+    limit = input("[+] Number of bytes to dump (default 256): ").strip()
+    limit = int(limit) if limit.isdigit() else 256
+
+    print(f"\n[+] Hex Dump (First {limit} bytes):\n")
+    with open(filepath, "rb") as f:
+        chunk = f.read(limit)
+        for i in range(0, len(chunk), 16):
+            sub_chunk = chunk[i:i+16]
+            hex_str = ' '.join(f'{b:02X}' for b in sub_chunk)
+            ascii_str = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in sub_chunk)
+            print(f"{i:08X}  {hex_str:<48}  |{ascii_str}|")
+    print()
 
 def check_entropy():
     filepath = input("\n[+] Enter Path to target binary: ").strip()
@@ -192,24 +210,6 @@ def check_entropy():
     else:
         print("[+] Normal Entropy: Standard Binary or text data.\n")
 
-    def hex_dump():
-        filepath = input("\n[+] Enter Path to target file: ").strip()
-        if not os.path.isfile(filepath):
-            print("[-] Error: File does not exist!\n")
-            return
-
-    limit = input("[+] Number of bytes to dump (default 256): ").strip()
-    limit = int(limit) if limit.isdigit() else 256
-
-    print(f"\n[+] hex dump (first {limit} bytes):\n ")
-    with open(filepath, "rb") as f:
-        chunk = f.read(limit)
-        for i in range(0, len(chunk) , 16):
-            sub_chunk = chunk[i:i+16]
-            hex_str = ' '.join(f'{b:02X}' for b in sub_chunk)
-            ascii_str = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in sub_chunk)
-            print(f"{i:08X} {hex_str:<48}  |{ascii_str}|")
-        print()
 
 def extract_strings():
     filepath = input("\n[+] Enter path to target binary: ").strip()
@@ -306,28 +306,68 @@ def disassemble_bytes():
 
 # sub menu
 
+def re_toolkit_menu():
+    while True:
+        print("\n--- Reverse Engineering & Binary Analysis ---")
+        print("1. File Metadata & hash analyzer ")
+        print("2. Calculate shannon entropy (packet detection) ")
+        print("3. Hex dump Binary bytes")
+        print("4. Extract IOC Strings (URLs, IPs)")
+        print("5. Parse Windows PE Headers (requires pefile)")
+        print("6. Disassemble Hex Machine code (requires capstone)")
+        print("7. Back to Main Menu")
 
+        choice = input("\nSelect an option (1-7): ").strip()
+
+        if choice == "1":
+            analyze_file()
+        elif choice == "2":
+            check_entropy()
+        elif choice == "3":
+            hex_dump()
+        elif choice == "4":
+            extract_strings()
+        elif choice == "5":
+            parse_pe_headers()
+        elif choice == "6":
+            disassemble_bytes()
+        elif choice == "7":
+            break
+        else:
+            print("[!] Invalid selection, try again!")
 
 # main menu
 
 def main():
     while True:
         print_banner()
-        print("1. Base64 Encoder / Decoder")
-        print("2. Hash Generator (MD5, SHA1, SHA256)")
-        print("3. Exit")
+        print(" 1. Base64 Encoder / Decoder")
+        print(" 2. Hex Converter (Text <-> Hex)")
+        print(" 3. URL Encoder / Decoder")
+        print(" 4. Hash Generator (MD5, SHA1, SHA256)")
+        print(" 5. Secure Password / Key Generator")
+        print(" 6. Reverse Engineering & Binary Analysis Toolkit")
+        print(" 7. Exit")
 
-        choice = input("\nSelect an option (1-3): ")
+        choice = input("\nSelect an option (1-7): ").strip()
 
-        if choice == "1":
+        if choice == "1":    
             base64_menu()
         elif choice == "2":
+            hex_menu()
+        elif choice == "3":
+            url_menu()
+        elif choice == "4":
             generate_hashes()
-        elif choice == "3":  
-            print("\n[+] Exiting toolkit. Enjoy!!!")
+        elif choice == "5":
+            generate_token()
+        elif choice == "6":
+            re_toolkit_menu()
+        elif choice == "7":
+            print("\n[+] Exiting toolkit. Keep grinding!")
             break
         else:
             print("\n[!] Invalid Option, try again.\n")
 
 if __name__ == "__main__":
-    main()    
+    main()

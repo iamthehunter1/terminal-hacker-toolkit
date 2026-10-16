@@ -361,7 +361,7 @@ def main():
             generate_hashes()
         elif choice == "5":
             generate_token()
-        elif choice == "6":
+        elif choice == "6":       
             re_toolkit_menu()
         elif choice == "7":
             print("\n[+] Exiting toolkit. Keep grinding!")

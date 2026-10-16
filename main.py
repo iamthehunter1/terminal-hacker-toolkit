@@ -136,7 +136,7 @@ def generate_token():
     length = int(length) if length.isdigit() and int(length) > 0 else 16
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     token = ''.join(secrets.choice(alphabet) for _ in range(length)) 
-    print(f"[>] Generated Key: {token}/n")
+    print(f"[>] Generated Key: {token}\n")
 
 
 # reverse engineering and malware analysis
@@ -144,7 +144,7 @@ def generate_token():
 def analyze_file():
     filepath = input("\n[+] Enter Path to target binary/file: ").strip()
     if not os.path.isfile(filepath):
-        print("[-] Error: file path does not exist!/n")
+        print("[-] Error: file path does not exist!\n")
         return
 
     file_size = os.path.getsize(filepath)
@@ -231,12 +231,11 @@ def compare_file_hashes():
 
 def detect_file_signature():
     """ Identify common file types using their magic bytes. """
-    import os
 
     signatures = [
         ("PE Signatures (EXE/DLL)", b"MZ", (".exe", ".dll", ".sys")),
         ("PNG Image", b"\x89PNG\r\n\x1a\n", (".png",)),
-        ("JPEG Image", b"\xff\xd8\xff", (".jpg", ".jpeg"))
+        ("JPEG Image", b"\xff\xd8\xff", (".jpg", ".jpeg")),
         ("PDF Document", b"%PDF-", (".pdf",)),
         ("ZIP archive", b"PK\x03\x04", (".zip",)),
         ("GIF Image", b"GIF8", (".gif",)),
@@ -250,14 +249,14 @@ def detect_file_signature():
 
     try:
         with open(filepath, "rb") as file:
-            header = file.read(os)
+            header = file.read(16)
 
         extension = os.path.splitext(filepath)[1].lower()
 
         print("\n[+] File Signature Report")
         print(f"   File:        {os.path.basename(filepath)}")
         print(f"   Extension:   {extension or '(none)'}")
-        print(f"   Header:      {header.hex('').upper() or '(empty file)'}")
+        print(f"   Header:      {header.hex(' ').upper() or '(empty file)'}")
 
         detected = None
         for file_type, magic, valid_extensions in signatures:
@@ -282,12 +281,140 @@ def detect_file_signature():
         print(f"[-] Could not read file: {error}\n")
 
 
+def yara_lite_scanner():
+    """ Scan a file for known strings and byte patterns."""
+
+    rules = [
+        ("POWERSHELL", b"powershell", "Powershell reference", "LOW"),
+        ("CMD_EXECUTION", b"cmd.exe", "Command interpreter reference", "LOW"),
+        ("SCRIPT_HOST", b"wscript.exe", "Windows Script Host reference", "LOW"),
+        ("REMOTE_THREAD", b"CreateRemoteThread",
+         "Remote thread API reference", "MEDIUM"),
+        ("MEMORY_WRITE", b"WriteProcessMemory",
+         "Process memory-writing API reference", "MEDIUM"),
+        ("MEMORY_ALLOC", b"VirtualAlloc",
+         "Memory allocation API reference", "LOW"),
+        ("URL_DOWNLOAD", b"URLDownloadToFile",
+         "URL Download API reference ", "MEDIUM"),
+        ("BASE64_DECODE", b"FromBase64String",
+         "Base64 decoding reference", "LOW"),
+        ("DEFENDER_CHANGE", b"DisableRealtimeMonitoring",
+         "Possible Defender configuration reference", "HIGH"),
+        ("RUN_KEY", b"CurrentVersion\\Run",
+         "Possible Windows Run-key reference", "MEDIUM"),     
+
+
+    ]
+
+    filepath = input("\n[+] File path to scan: ").strip().strip('"')  
+
+    if not os.path.isfile(filepath):
+        print("[-] File does not exist or is not a regular file.\n")
+        return
+
+    custom = input (
+        "[+] Optional custom ASCII string (Enter to skip):  "
+                              
+    
+    ).strip()
+
+    print(f"[DEBUG] Scanner continuing; file exists: {os.path.isfile(filepath)}")
+
+    if custom:    
+        rules.append((
+            "CUSTOM_STRING",
+            custom.encode("utf-8"),
+            f"Custom indicator: {custom!r}",
+            "INFO",
+        ))
+
+    findings = []
+    chunk_size = 1024 * 1024  
+    max_pattern_length = max(len(pattern) for _, pattern, _, _ in rules)
+    overlap_size = max_pattern_length -1
+    tail = b""
+    total_read = 0
+
+    try:
+        with open(filepath, "rb") as file:
+            while True:
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+
+                buffer = tail + chunk    
+                base_offsets = total_read - len(tail)      
+                lower_buffer = buffer.lower()     
+                previous_tail_length  = len(tail)     
+                total_read += len(chunk)    
+
+                for name, pattern , description, severity in rules:    
+                    needle = pattern.lower()    
+                    start = 0 
+
+                    while True:
+                        position = lower_buffer.find(needle, start)       
+                        if position == -1:
+                            break     
+
+                        if position + len(needle) > previous_tail_length:    
+                            findings.append({
+                                "name": name,
+                                "offset": base_offsets + position,
+                                "description": description,
+                                "severity": severity,
+                                "match": buffer[
+                                    position:position + len(pattern)      
+                                ],
+                            })
+
+                        start = position + 1      
+
+                tail = buffer[-overlap_size:] if overlap_size else b""    
+
+        findings.sort(key=lambda  finding: finding["offset"])
+
+        print("\n" + "=" * 60)      
+        print("YARA-LITE  STATIC SCAN REPORT")    
+        print("=" * 60)
+        print(f"File: {os.path.basename(filepath)}")
+        print(f"Size: {total_read:,} bytes")     
+        print(f"Rules: {len(rules)}")           
+        print(f"Matches: {len(findings)}\n")      
+
+        if not findings:
+            print("[+] No configured Indicators matched.  " )         
+            print("[!] This does not prove the file is safe. ")          
+        else:
+            for finding in findings:
+                print(
+                    f"[{finding['severity']}] {finding['name']}\n"
+                    f"     Offset: 0x{finding['offset']:X}\n"
+                    f"     Detail: {finding['description']}\n"
+                    f"     Match:  {finding['match']!r}\n"
+                )           
+
+            print("[!] Investigate matches in context; strings alone. ")
+            print("    do not establish malicious behavior.   ")
+
+        print("=" * 60 + "\n")      
+
+    except OSError as error:    
+        print(f"[-] Scan failed: {error}\n")     
+
+                      
+
+  
+     
+
+
 
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
     if not os.path.isfile(filepath):
         print("[-] Error: File does not exist!\n")
         return
+     
 
     limit = input("[+] Number of bytes to dump (default 256): ").strip()
     limit = int(limit) if limit.isdigit() else 256
@@ -302,11 +429,16 @@ def hex_dump():
             print(f"{i:08X}  {hex_str:<48}  |{ascii_str}|")
     print()
 
+
+                                      
+
 def check_entropy():
     filepath = input("\n[+] Enter Path to target binary: ").strip()
     if not os.path.isfile(filepath):
         print("[-] Error: File path does not exist!\n")
         return
+ 
+ 
 
     with open(filepath, "rb") as f:
         data = f.read()
@@ -317,9 +449,10 @@ def check_entropy():
 
     entropy = 0
     for x in range(256):
-        p_x = float(data.count(x)) / len(data)
+        p_x = data.count(bytes([x])) / len(data)
         if p_x > 0:
             entropy += - p_x * math.log2(p_x)
+
 
     entropy = round(entropy, 4)
     print(f"\n[+] Shanon Entropy: {entropy} / 8.0")
@@ -331,6 +464,8 @@ def check_entropy():
         print("[+] Normal Entropy: Standard Binary or text data.\n")
 
 
+
+     
 def extract_strings():
     filepath = input("\n[+] Enter path to target binary: ").strip()
     if not os.path.isfile(filepath):
@@ -340,12 +475,13 @@ def extract_strings():
     min_len = 4
     print(f"\n[+] Extracting printable ASCII strings (Min length {min_len})...\n")
     
-    ip_pattern = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
-    url_pattern = re.compile(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+')
+    ip_pattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+    url_pattern = re.compile(r"""https?://[^\s'"<>]+""", re.IGNORECASE)  
     
     found_ips = set()
     found_urls = set()
 
+    
     with open(filepath, "rb") as f:
         data = f.read()
         current = ""
@@ -359,6 +495,10 @@ def extract_strings():
                     if url_pattern.findall(current):
                         found_urls.update(url_pattern.findall(current))
                 current = ""
+
+        if len(current) >= min_len:
+            found_ips.update(ip_pattern.findall(current))
+            found_urls.update(url_pattern.findall(current))
 
     if found_urls:
         print("[>] Potential URLs Found:")
@@ -441,11 +581,13 @@ def re_toolkit_menu():
         print("5. Parse Windows PE Headers (requires pefile)")
         print("6. Disassemble Hex Machine code (requires capstone)")
         print("7. File Integrity Check (SHA-256)")
-        print("8. Compare Two files.")
-        print("9. File Signature detection.")
-        print("10. Back to Main Menu.")
+        print("8. Compare Two files.")    
+        print("9. File Signature detection.")   
+        print("10. YARA-Lite Static Scanner")    
+        print("11. Back to Main Menu.")
+         
    
-        choice = input("\nSelect an option (1-9): ").strip()
+        choice = input("\nSelect an option (1-11): ").strip()
 
         if choice == "1":
             analyze_file()
@@ -463,9 +605,11 @@ def re_toolkit_menu():
             file_integrity_check() 
         elif choice == "8":    
             compare_file_hashes() 
-        elif choice =="9":
+        elif choice =="9":   
             detect_file_signature() 
-        elif choice == "10":  
+        elif choice == "10":
+            yara_lite_scanner()    
+        elif choice == "11":  
             break
         else:
             print("[!] Invalid selection, try again!")

@@ -1,10 +1,10 @@
 Terminal Hacker Toolkit
 
-A modular command-line toolkit written in Python for reverse engineering, binary analysis, cryptography, and executable inspection.
+A modular Python CLI for reverse engineering, binary analysis, cryptography, and executable inspection.
 
-Status: Under development.
+Status: In development
 
-Installation:
+Installation
 
 Clone the repository:
 
@@ -16,12 +16,9 @@ Install dependencies:
 
 python -m pip install -r requirements.txt
 
-Usage:
-
-Run the toolkit:
-
+Usage
 python main.py
 
-Development:
+Development
 
-This project is actively being developed. Features and documentation will be updated as development progresses.
+This project is actively under development. Features and documentation will be updated as implementation progresses.

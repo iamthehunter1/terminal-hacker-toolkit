@@ -3,6 +3,8 @@ import hashlib
 import math
 import time
 import os
+from collections import Counter
+from pathlib import Path
 import re
 import socket     
 import secrets
@@ -145,7 +147,7 @@ def generate_token():
 # reverse engineering and malware analysis
 
 
-# TCP port scanner
+# TCP port scanner                   
 
 def tcp_port_scanner():
     """ Scan selected TCP ports. """
@@ -246,12 +248,120 @@ def tcp_port_scanner():
     print("\n[!] No open TCP ports detected ")  
     print("=" * 40 + "\n")
 
-                                 
-def analyze_file():    
+
+# log file analyzer    
+
+def log_file_analyzer():
+    """ Analyze a log file for errors, failed logins, and reported IP"""                
+
+    print("\n--- Log File Analyzer ---")               
+    file_path =  input("[+] Enter log file path: ").strip().strip('"')             
+
+
+    path = Path(file_path)  
+
+    if not path.is_file():          
+        print("[-] File not found.\n")            
+        return
+
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as file:         
+            lines = file.readlines()
+    except OSError as error:
+        print(f"[-] Could not read file: {error}\n")
+        return                      
+
+    if not lines:
+        print(f"[-] File is empty\n")
+        return
+
+    text = "".join(lines)      
+    lower_text  = text.lower()            
+
+    error_count = sum(
+        1 for line in lines 
+        if re.search(r"\b(error|critical|fatal)\b", line, re.I)            
+
+    )   
+
+    warning_count = sum(
+        1 for line in lines
+        if re.search(r"\b(warn|warning)\b", line, re.I)       
+    )
+
+    failed_login_count = sum(
+        1 for line in lines   
+        if re.search(
+            r"failed login|login failed|authentication failed|"                          
+            r"invalid password|invalid credentials",
+            line,
+            re.I        
+
+        )
+    )
+
+    ip_pattern = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"             
+    ips = re.findall(ip_pattern, text)            
+
+    valid_ips = [
+        ip for ip in ips     
+        if all(0 <= int(part) <= 255 for part in ip.split("."))                       
+                      
+    ]    
+
+    ip_counts = Counter(valid_ips)                   
+
+    print("\n" + '=' * 40)                       
+    print("LOG ANALYSIS SUMMARY")    
+    print("=" * 40)
+    print(f"File:            {path.name}")          
+    print(f"Total lines:     {len(lines)}") 
+    print(f"Error lines:     {error_count}")                     
+    print(f"Warning lines:   {warning_count}")              
+    print(f"Failed logins:   {failed_login_count}")              
+
+    print("\n--- Most Frequent IP Addresses ---")            
+
+    if ip_counts:
+        for ip, count in ip_counts.most_common(10):                              
+            print(f"{ip:<18} {count} occurence(s)")      
+
+    else:
+        print("No valid IPv4 addresses found")  
+
+    print("\n--- Failed login entries ---")   
+
+    matching_lines = [
+        (number, line.strip())
+        for number, line in enumerate(lines, start=1)             
+        if re.search(
+            r"failed login|login failed|authentication failure|"   
+            r"invalid password|invalid credentials",
+            line,
+            re.I    
+
+        )
+
+    ]   
+
+    if matching_lines:
+        for number, line in matching_lines[:10]:
+            print(f"Line {number}: {line[:200]}")   
+        if len(matching_lines) > 10:
+            print(f"...and {len(matching_lines) - 10} more.") 
+
+    else:
+        print("No matching failed-logins messages found")     
+
+    print("\n[!] Reported IPs or logs errors are indicators to check")
+    print(" not proof of malicious activity")
+    print("=" * 40 + "\n")
+
+def analyze_file():                                                  
     filepath = input("\n[+] Enter Path to target binary/file: ").strip()   
     if not os.path.isfile(filepath):    
-        print("[-] Error: file path does not exist!\n")                            
-        return       
+        print("[-] Error: file path does not exist!\n")                                                
+        return                                 
     
     file_size = os.path.getsize(filepath)
     print(f"\n[>] Target file: {os.path.basename(filepath)}")
@@ -262,12 +372,12 @@ def analyze_file():
     sha256_hash = hashlib.sha256()
 
     with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
+        for byte_block in iter(lambda: f.read(4096), b""):    
             md5_hash.update(byte_block)
             sha256_hash.update(byte_block)
 
-    print(f"    MD5:      {md5_hash.hexdigest()}")
-    print(f"    SHA256    {sha256_hash.hexdigest()}\n")    
+    print(f"   MD5:      {md5_hash.hexdigest()}")
+    print(f"   SHA256    {sha256_hash.hexdigest()}\n")    
 
 
 def calculate_sha256(filepath, chunk_size=1024 * 1024):
@@ -414,7 +524,6 @@ def yara_lite_scanner():
     custom = input (
         "[+] Optional custom ASCII string (Enter to skip):  "
                               
-    
     ).strip()
 
     if custom:         
@@ -517,7 +626,7 @@ def yara_lite_scanner():
             print(f"[+] Report Saved to {report_path}")
 
         except OSError as error:
-            print(f"[-] Could not save report: {error}")    
+            print(f"[-] Could not save report: {error}")
           
         print("\n" + "=" * 60)         
         print("YARA-LITE  STATIC SCAN REPORT")    
@@ -614,7 +723,7 @@ def extract_strings():
     
     with open(filepath, "rb") as f:
         data = f.read()
-        current = ""
+        current = ""        
         for byte in data:
             if 32 <= byte <= 126:
                 current += chr(byte)
@@ -695,10 +804,10 @@ def disassemble_bytes():
     print()
 
 
-
 # sub menu
 
-       
+    
+
 def re_toolkit_menu():
     while True:
         print("\n--- Reverse Engineering & Binary Analysis ---")
@@ -712,45 +821,58 @@ def re_toolkit_menu():
         print("8. Compare Two files.")    
         print("9. File Signature detection.")   
         print("10. YARA-Lite Static Scanner")   
-        print("11. TCP Port scanner")                           
-        print("12. Back to Main Menu.")      
+        print("11. TCP Port scanner")     
+        print("12. Log File Analyzer")              
+        print("13. Back to Main Menu.")      
          
    
-        choice = input("\nSelect an option (1-12): ").strip()    
+        choice = input("\nSelect an option (1-13): ").strip()    
 
         if choice == "1":
             analyze_file()
+
         elif choice == "2":
             check_entropy()
+
         elif choice == "3":
             hex_dump()
+
         elif choice == "4":
             extract_strings()
+
         elif choice == "5":
             parse_pe_headers()
+
         elif choice == "6":
             disassemble_bytes()   
+
         elif choice == "7":
             file_integrity_check() 
+
         elif choice == "8":    
             compare_file_hashes() 
-        elif choice =="9":   
+
+        elif choice =="9":       
             detect_file_signature() 
+
         elif choice == "10":
-            yara_lite_scanner()   
+            yara_lite_scanner() 
+
         elif choice == "11":
-            tcp_port_scanner()       
-        elif choice == "12":  
+            tcp_port_scanner() 
+                 
+        elif choice == "12":
+            log_file_analyzer()
+
+        elif choice == "13":  
             break
         else:
             print("[!] Invalid selection, try again!")
 
-
 # main menu
-
    
 def main():
-    while True:
+    while True:   
         print_banner()
         print(" 1. Base64 Encoder / Decoder")
         print(" 2. Hex Converter (Text <-> Hex)")
@@ -759,26 +881,32 @@ def main():
         print(" 5. Secure Password / Key Generator")
         print(" 6. Reverse Engineering & Binary Analysis Toolkit.")
         print(" 7. Exit")
-
-        choice = input("\nSelect an option (1-7): ").strip()
+     
+        choice = input("\nSelect an option (1-7): ").strip()   
 
         if choice == "1":    
-            base64_menu()
+            base64_menu()  
+
         elif choice == "2":
             hex_menu()
+
         elif choice == "3":
             url_menu()
+
         elif choice == "4":
             generate_hashes()
+
         elif choice == "5":
             generate_token()
+
         elif choice == "6":       
             re_toolkit_menu()
+
         elif choice == "7":
             print("\n[+] Exiting toolkit. Keep grinding!")
-            break
+            break                                           
         else:
             print("\n[!] Invalid Option, try again.\n")
 
 if __name__ == "__main__":
-    main()    
+    main()   

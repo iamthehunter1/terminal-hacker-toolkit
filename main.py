@@ -4,6 +4,7 @@ import math
 import time
 import os
 import re
+import socket     
 import secrets
 import string
 import sys
@@ -143,17 +144,120 @@ def generate_token():
 
 # reverse engineering and malware analysis
 
-def analyze_file():
-    filepath = input("\n[+] Enter Path to target binary/file: ").strip()
-    if not os.path.isfile(filepath):
-        print("[-] Error: file path does not exist!\n")
+
+# TCP port scanner
+
+def tcp_port_scanner():
+    """ Scan selected TCP ports. """
+
+    print("\n--- Tcp Port Scanner ---")            
+
+    host = input("\n[+] Enter target hostname or IP: ").strip()      
+
+    if not host:
+        print("[-] Target cannot be Empty.\n")
+        return      
+
+    try:
+        target_ip = socket.gethostbyname(host)
+    except (socket.gaierror, UnicodeError):   
+        print("[-] Could not resolve hostname or IP address\n")    
         return
 
+    print(f"\n[+] Target: {host} ({target_ip})")       
+    print("[+] Enter ports like 22,80,443 or a range like 100.")     
+    port_input = input("[+] Ports to scan (default common ports: )").strip()        
+
+    if not port_input:         
+        ports = [
+            21, 22, 23, 25, 53, 80, 110, 143,
+            443, 445, 3306, 3389, 5432, 8080, 8443
+
+        ]     
+    else:
+        try:
+            ports = set()    
+
+            for item in port_input.split(","):              
+                item = item.strip()   
+
+                if "-" in item:
+                    parts = item.split("-")        
+
+                    if len(parts) != 2:    
+                        raise ValueError     
+
+                    start_pot, end_port = map(int, parts)  
+
+                    if start_pot > end_port:
+                        raise ValueError   
+                    
+
+                    if end_port - start_pot > 9999:
+                        print("[-] Max range size is 10,000 ports\n")
+                        return        
+
+                    ports.update(range(start_pot, end_port + 1))   
+                else:
+                    ports.add(int(item))    
+
+            if not ports or any(p < 1 or p > 65535 for p in ports):  
+                raise ValueError   
+
+            ports = sorted(ports)
+
+        except ValueError:
+            print("[-] Invalid port input. Use ports from 1 to 65535\n")   
+            return       
+
+    print(f"\n Scanning {len(ports)} tcp ports\n")
+    open_ports = []
+                             
+    for port in sorted(ports):     
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.5)   
+                result = sock.connect_ex((target_ip, port))
+
+                if result == 0:
+                    open_ports.append(port)     
+                    try: 
+                        service = socket.getservbyport(port, "tcp")    
+                    except OSError:
+                        service = "unknown"
+
+                    print(f"[OPEN]  Port {port:<5} Service: {service}")   
+
+        except OSError:
+            continue
+
+    print("\n" + "=" * 40 )      
+    print("TCP scan summary ")
+    print("=" * 40) 
+    print(f"Target:    {host} ({target_ip})")
+    print(f"Ports tested:  {len(ports)} ")       
+    print(f"Open ports:    {len(open_ports)}")    
+
+    if open_ports:
+        print("Open:      " + ", ".join(map(str, open_ports)))
+    else:
+        print("No open TCP ports detected ")
+
+    print("\n[!] No open TCP ports detected ")  
+    print("=" * 40 + "\n")
+
+                                 
+def analyze_file():    
+    filepath = input("\n[+] Enter Path to target binary/file: ").strip()   
+    if not os.path.isfile(filepath):    
+        print("[-] Error: file path does not exist!\n")                            
+        return       
+    
     file_size = os.path.getsize(filepath)
     print(f"\n[>] Target file: {os.path.basename(filepath)}")
     print(f"   Full Path: {filepath}")
     print(f"    Size:      {file_size} bytes ({round(file_size / 1024, 2)} KB)")
-
+   
     md5_hash = hashlib.md5()
     sha256_hash = hashlib.sha256()
 
@@ -166,10 +270,8 @@ def analyze_file():
     print(f"    SHA256    {sha256_hash.hexdigest()}\n")    
 
 
-
 def calculate_sha256(filepath, chunk_size=1024 * 1024):
-    """ Calculate a file's SHA-256 hash without loading it all into memory.
-    """
+    """ Calculate a file's SHA-256 hash without loading it all into memory."""                              
     digest = hashlib.sha256()
 
     with open(filepath, "rb") as file:
@@ -178,9 +280,8 @@ def calculate_sha256(filepath, chunk_size=1024 * 1024):
 
     return digest.hexdigest()
 
-
 def file_integrity_check():
-    """ Display a file's size and SHA-256 checksum. """
+    """ Display a file's size and SHA-256 checksum."""   
     filepath = input("\n[+] Enter file path: ").strip().strip('"')
 
     if not os.path.isfile(filepath):
@@ -206,9 +307,8 @@ def compare_file_hashes():
     first_path = input("\n[+] Enter path to first file: ").strip().strip('"')
     second_path = input("[+] Enter path to second file: ").strip().strip('"')
 
-
     for filepath in (first_path, second_path):
-        if not os.path.isfile(filepath):   
+        if not os.path.isfile(filepath):                          
             print(f"[-] File does not exist or is not recognized: {filepath}\n")
             return
 
@@ -230,9 +330,8 @@ def compare_file_hashes():
     except (OSError, ValueError) as error:
         print(f"[-] Could not compare files: {error}\n") 
 
-
 def detect_file_signature():
-    """ Identify common file types using their magic bytes. """
+    """ Identify common file types using their magic bytes."""                
 
     signatures = [
         ("PE Signatures (EXE/DLL)", b"MZ", (".exe", ".dll", ".sys")),
@@ -265,7 +364,7 @@ def detect_file_signature():
             if header.startswith(magic):
                 detected = (file_type, valid_extensions)
                 break
-
+ 
         if detected:
             file_type, valid_extensions = detected
             print(f"    Detected: {file_type}")
@@ -278,14 +377,13 @@ def detect_file_signature():
             print("[?] Unknown file signature; no supported format matched. ")    
 
         print()
-
+      
     except OSError as error:
         print(f"[-] Could not read file: {error}\n")
 
-
 def yara_lite_scanner():
-    """ Scan a file for known strings and byte patterns."""
-
+    """ Scan a file for known strings and byte patterns"""                           
+    
     rules = [
         ("POWERSHELL", b"powershell", "Powershell reference", "LOW"),
         ("CMD_EXECUTION", b"cmd.exe", "Command interpreter reference", "LOW"),
@@ -305,7 +403,6 @@ def yara_lite_scanner():
         ("RUN_KEY", b"CurrentVersion\\Run",
          "Possible Windows Run-key reference", "MEDIUM"),     
 
-
     ]
 
     filepath = input("\n[+] File path to scan: ").strip().strip('"')  
@@ -319,8 +416,6 @@ def yara_lite_scanner():
                               
     
     ).strip()
-
-   
 
     if custom:         
         rules.append((
@@ -453,8 +548,7 @@ def yara_lite_scanner():
     except OSError as error:    
         print(f"[-] Scan failed: {error}\n")     
 
-                      
-        
+                                 
 
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
@@ -628,11 +722,12 @@ def re_toolkit_menu():
         print("7. File Integrity Check (SHA-256)")
         print("8. Compare Two files.")    
         print("9. File Signature detection.")   
-        print("10. YARA-Lite Static Scanner")    
-        print("11. Back to Main Menu.")
+        print("10. YARA-Lite Static Scanner")   
+        print("11. TCP Port scanner")                           
+        print("12. Back to Main Menu.")      
          
    
-        choice = input("\nSelect an option (1-11): ").strip()
+        choice = input("\nSelect an option (1-12): ").strip()    
 
         if choice == "1":
             analyze_file()
@@ -653,8 +748,10 @@ def re_toolkit_menu():
         elif choice =="9":   
             detect_file_signature() 
         elif choice == "10":
-            yara_lite_scanner()    
-        elif choice == "11":  
+            yara_lite_scanner()   
+        elif choice == "11":
+            tcp_port_scanner()       
+        elif choice == "12":  
             break
         else:
             print("[!] Invalid selection, try again!")

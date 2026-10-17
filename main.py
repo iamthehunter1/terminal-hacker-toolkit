@@ -519,14 +519,13 @@ def yara_lite_scanner():
         except OSError as error:
             print(f"[-] Could not save report: {error}")    
           
-
         print("\n" + "=" * 60)         
         print("YARA-LITE  STATIC SCAN REPORT")    
         print("=" * 60)
         print(f"File: {os.path.basename(filepath)}")
         print(f"Size: {total_read:,} bytes")     
         print(f"Rules: {len(rules)}")           
-        print(f"Matches: {len(findings)}\n")      
+        print(f"Matches: {len(findings)}\n")           
 
         if not findings:
             print("[+] No configured Indicators matched.  " )         
@@ -538,17 +537,15 @@ def yara_lite_scanner():
                     f"     Offset: 0x{finding['offset']:X}\n"
                     f"     Detail: {finding['description']}\n"
                     f"     Match:  {finding['match']!r}\n"
-                )           
+                )                
 
             print("[!] Investigate matches in context; strings alone. ")
             print("    do not establish malicious behavior.   ")
-
+                       
         print("=" * 60 + "\n")      
 
     except OSError as error:    
-        print(f"[-] Scan failed: {error}\n")     
-
-                                 
+        print(f"[-] Scan failed: {error}\n")                        
 
 def hex_dump():
     filepath = input("\n[+] Enter path to target file: ").strip()
@@ -570,14 +567,11 @@ def hex_dump():
     print()
 
 
-                                      
-
 def check_entropy():
     filepath = input("\n[+] Enter Path to target binary: ").strip()
     if not os.path.isfile(filepath):
         print("[-] Error: File path does not exist!\n")
         return
- 
 
     with open(filepath, "rb") as f:
         data = f.read()
@@ -592,7 +586,6 @@ def check_entropy():
         if p_x > 0:
             entropy += - p_x * math.log2(p_x)
 
-
     entropy = round(entropy, 4)
     print(f"\n[+] Shanon Entropy: {entropy} / 8.0")
     if entropy > 7.0:
@@ -601,8 +594,6 @@ def check_entropy():
         print("[!] NOTE: Extremely low entropy. File mostly contains repetitive bytes or zeros.")
     else:
         print("[+] Normal Entropy: Standard Binary or text data.\n")
-
-
 
      
 def extract_strings():
@@ -705,11 +696,9 @@ def disassemble_bytes():
 
 
 
-
 # sub menu
 
        
-          
 def re_toolkit_menu():
     while True:
         print("\n--- Reverse Engineering & Binary Analysis ---")
@@ -793,8 +782,3 @@ def main():
 
 if __name__ == "__main__":
     main()    
-
-
-
-
-  

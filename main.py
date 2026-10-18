@@ -343,7 +343,7 @@ def log_file_analyzer():
             re.I    
 
         )
-
+     
     ]
 
     if matching_lines:
@@ -457,14 +457,37 @@ def system_information():
     except (OSError, ValueError) as error:
         print(f"\n[-] Could not save diagnostics report: {error}\n")
 
-def analyze_file():
+
+def file_timestamp_viewer():
+    """ Display a file's creation, modification, and access times """ 
+
+    filepath = input("\n[+] Enter file path: ").strip().strip('"')   
+
+    if not os.path.isfile(filepath):
+        print("[-] File does not exist or is not a regular file\n")
+        return
+
+def analyze_file():   
     filepath = input("\n[+] Enter Path to target binary/file: ").strip()
     if not os.path.isfile(filepath):
         print("[-] Error: file path does not exist!\n")                             
         return 
-           
+
+    try:
+        file_stats = os.stat(filepath)
+
+        print("\n--- File Timestamp Report ---")
+        print(f"File:           {os.path.basename(filepath)}")
+        print(f"Created:        {time.ctime(file_stats.st_ctime)}")
+        print(f"Last Modified:  {time.ctime(file_stats.st_mtime)}")
+        print(f"Last Accessed:  {time.ctime(file_stats.st_atime)}")
+        print("\n[+] Timestamp report complete.\n")
+
+    except OSError as error:
+        print(f"[-] Could not read file timestamps: {error}\n")
+    
     file_size = os.path.getsize(filepath)
-    print(f"\n[>] Target file: {os.path.basename(filepath)}")
+    print(f"\n[>] Target file: {os.path.basename(filepath)}")   
     print(f"   Full Path: {filepath}")
     print(f"    Size:      {file_size} bytes ({round(file_size / 1024, 2)} KB)")
    
@@ -898,7 +921,7 @@ def disassemble_bytes():
     md = Cs(CS_ARCH_X86, mode)
     print(f"\n[>] Disassembly Output ({'x86_32' if arch == '32' else 'x86_64'}):")
     for insn in md.disasm(code, 0x1000):
-        print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")    
+        print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")
     print()
 
 # sub menu              
@@ -913,16 +936,17 @@ def re_toolkit_menu():
         print("5. Parse Windows PE Headers (requires pefile)")
         print("6. Disassemble Hex Machine code (requires capstone)")
         print("7. File Integrity Check (SHA-256)")
-        print("8. Compare Two files.")    
-        print("9. File Signature detection.")   
-        print("10. YARA-Lite Static Scanner")   
-        print("11. TCP Port scanner")     
-        print("12. Log File Analyzer")    
-        print("13. System Information & Diagnostics")          
-        print("14. Back to Main Menu.")      
+        print("8. Compare Two files.")
+        print("9. File Signature detection.")
+        print("10. YARA-Lite Static Scanner")
+        print("11. TCP Port scanner")
+        print("12. Log File Analyzer")
+        print("13. System Information & Diagnostics")    
+        print("14. File timestamp viewer")
+        print("15. Back to Main Menu.")  
          
    
-        choice = input("\nSelect an option (1-14): ").strip()      
+        choice = input("\nSelect an option (1-15): ").strip()      
 
         if choice == "1":
             analyze_file()
@@ -963,7 +987,10 @@ def re_toolkit_menu():
         elif choice == "13":
             system_information()
 
-        elif choice == "14":  
+        elif choice == "14":
+            file_timestamp_viewer()
+
+        elif choice == "15":
             break
         else:
             print("[!] Invalid selection, try again!")

@@ -344,7 +344,7 @@ def log_file_analyzer():
 
         )
 
-    ]   
+    ]
 
     if matching_lines:
         for number, line in matching_lines[:10]:
@@ -361,39 +361,37 @@ def log_file_analyzer():
 
 # system information
 
+
 def system_information():
-    """Display system details and check disk usage"""
+    """Display system details and check disk usage."""
     print("\n" + "=" * 45)
-    print("     SYSTEM INFORMATION & DIAGNOSTICS ")
+    print("     SYSTEM INFORMATION & DIAGNOSTICS")
     print("=" * 45)
 
-    info = {   
+    info = {
         "Hostname": socket.gethostname(),
         "Operating System": platform.system(),
         "OS Release": platform.release(),
         "Architecture": platform.machine(),
         "Processor": platform.processor() or "Not Available",
-        "Python Version": platform.python_version(), 
-        "Current Directory": os.getcwd(), 
+        "Python Version": platform.python_version(),
+        "Current Directory": os.getcwd(),
     }
 
     print("\n[+] System Information\n")
-
     for label, value in info.items():
         print(f"    {label:<22}: {value}")
 
     print("\n[+] Disk Usage Check")
-
     directory = input(
-        "\nEnter Directory path to check " 
-
+        "\nEnter directory path to check (Enter for current directory): "
     ).strip().strip('"')
 
     if not directory:
         directory = os.getcwd()
 
     if not os.path.isdir(directory):
-        print("[-] Error: Directory does not exist\n")
+        print("[-] Error: Directory does not exist.\n")
         return
 
     try:
@@ -403,61 +401,68 @@ def system_information():
         free_gb = disk.free / (1024 ** 3)
         usage_percent = (disk.used / disk.total) * 100
 
-        print(f"\n    Directory :  {os.path.abspath(directory)}" )
-        print(f"      Total :      {total_gb:.2f} GB")
-        print(f"      Used :       {used_gb:.2f} GB")
-        print(f"      Free :       {free_gb:.2f} GB")
-        print(f"      Usage :      {usage_percent:.1f}%")
+        print(f"\n    Directory : {os.path.abspath(directory)}")
+        print(f"    Total     : {total_gb:.2f} GB")
+        print(f"    Used      : {used_gb:.2f} GB")
+        print(f"    Free      : {free_gb:.2f} GB")
+        print(f"    Usage     : {usage_percent:.1f}%")
 
         if usage_percent >= 90:
-            print("\n[!] WARNING: Disk usage is critically high")
+            print("\n[!] WARNING: Disk usage is critically high.")
         elif usage_percent >= 80:
-            print("\n[!] Warning Disk Usage is high")
+            print("\n[!] Warning: Disk usage is high.")
         else:
-            print("\n[+] Disk usage is within the configured warning limits")  
+            print("\n[+] Disk usage is within the configured warning limits.")
 
+    except OSError as error:
+        print(f"\n[-] Could not complete disk diagnostics: {error}\n")
+        print("[+] System diagnostics complete.\n")
+        return
 
-        report = {
-            **info,
-            "Checked Directory": os.path.abspath(directory),
-            "Disk Total Gb": round(total_gb, 2),
-            "Disk Used Gb": round(used_gb, 2),
-            "Disk Free Gb": round(free_gb, 2),
-            "Disk Usage percent": round(usage_percent, 1)
-        }
+    print("\n[+] System diagnostics complete.")
 
-        save_report = input(
-            "\n Save diagnostics report as JSON (y/n): " 
-        ).strip().lower()     
+    save_report = input(
+        "\nSave diagnostics report as JSON? (y/n): "
+    ).strip().lower()
 
-        if save_report == "y":
-            report_path = input(
-                "Enter report filename: "
+    if save_report != "y":
+        print()
+        return
 
-            ).strip()
+    report = {
+        **info,
+        "Checked Directory": os.path.abspath(directory),
+        "Disk Total GB": round(total_gb, 2),
+        "Disk Used GB": round(used_gb, 2),
+        "Disk Free GB": round(free_gb, 2),
+        "Disk Usage Percent": round(usage_percent, 1),
+    }
 
-        if not report_path:
-            report_path = "system_report.json"
+    report_path = input(
+        "Enter report filename (default system_report.json): "
+    ).strip().strip('"')
 
-        if not report_path.lower().endswith(".json"):
-            report_path += ".json"
+    if not report_path:
+        report_path = "system_report.json"
 
+    if not report_path.lower().endswith(".json"):
+        report_path += ".json"
+
+    try:
         with open(report_path, "w", encoding="utf-8") as file:
-            json.dump(report,  file, indent=4)
+            json.dump(report, file, indent=4)
 
-        print(f"\n[+] Report saved to: {os.path.abspath(report_path)}")
+        print(f"\n[+] Report saved to: {os.path.abspath(report_path)}\n")
 
     except (OSError, ValueError) as error:
-        print(f"\n[-] Could not compelete diagnostics: {error}")
-
-    print("\n[+] System diagnostics complete\n")
+        print(f"\n[-] Could not save diagnostics report: {error}\n")
 
 def analyze_file():
     filepath = input("\n[+] Enter Path to target binary/file: ").strip()
     if not os.path.isfile(filepath):
         print("[-] Error: file path does not exist!\n")                             
-        return   
-
+        return 
+           
     file_size = os.path.getsize(filepath)
     print(f"\n[>] Target file: {os.path.basename(filepath)}")
     print(f"   Full Path: {filepath}")
@@ -798,8 +803,7 @@ def check_entropy():
         print("[!] NOTE: Extremely low entropy. File mostly contains repetitive bytes or zeros.")
     else:
         print("[+] Normal Entropy: Standard Binary or text data.\n")
-
-     
+    
 def extract_strings():
     filepath = input("\n[+] Enter path to target binary: ").strip()
     if not os.path.isfile(filepath):
@@ -894,7 +898,7 @@ def disassemble_bytes():
     md = Cs(CS_ARCH_X86, mode)
     print(f"\n[>] Disassembly Output ({'x86_32' if arch == '32' else 'x86_64'}):")
     for insn in md.disasm(code, 0x1000):
-        print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")
+        print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")    
     print()
 
 # sub menu              
@@ -958,14 +962,14 @@ def re_toolkit_menu():
 
         elif choice == "13":
             system_information()
-            
+
         elif choice == "14":  
             break
         else:
             print("[!] Invalid selection, try again!")
 
 # main menu
-   
+
 def main():
     while True:   
         print_banner()
@@ -999,7 +1003,7 @@ def main():
 
         elif choice == "7":
             print("\n[+] Exiting toolkit. Keep grinding!")
-            break                                           
+            break                               
         else:
             print("\n[!] Invalid Option, try again.\n")
 

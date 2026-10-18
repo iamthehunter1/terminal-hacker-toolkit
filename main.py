@@ -3,6 +3,8 @@ import hashlib
 import math
 import time
 import os
+import platform 
+import shutil
 from collections import Counter
 from pathlib import Path
 import re
@@ -351,25 +353,118 @@ def log_file_analyzer():
             print(f"...and {len(matching_lines) - 10} more.") 
 
     else:
-        print("No matching failed-logins messages found")     
+        print("No matching failed-logins messages found")
 
     print("\n[!] Reported IPs or logs errors are indicators to check")
     print(" not proof of malicious activity")
     print("=" * 40 + "\n")
 
-def analyze_file():                                                  
-    filepath = input("\n[+] Enter Path to target binary/file: ").strip()   
-    if not os.path.isfile(filepath):    
-        print("[-] Error: file path does not exist!\n")                                                
-        return                                 
-    
+# system information
+
+def system_information():
+    """Display system details and check disk usage"""
+    print("\n" + "=" * 45)
+    print("     SYSTEM INFORMATION & DIAGNOSTICS ")
+    print("=" * 45)
+
+    info = {   
+        "Hostname": socket.gethostname(),
+        "Operating System": platform.system(),
+        "OS Release": platform.release(),
+        "Architecture": platform.machine(),
+        "Processor": platform.processor() or "Not Available",
+        "Python Version": platform.python_version(), 
+        "Current Directory": os.getcwd(), 
+    }
+
+    print("\n[+] System Information\n")
+
+    for label, value in info.items():
+        print(f"    {label:<22}: {value}")
+
+    print("\n[+] Disk Usage Check")
+
+    directory = input(
+        "\nEnter Directory path to check " 
+
+    ).strip().strip('"')
+
+    if not directory:
+        directory = os.getcwd()
+
+    if not os.path.isdir(directory):
+        print("[-] Error: Directory does not exist\n")
+        return
+
+    try:
+        disk = shutil.disk_usage(directory)
+        total_gb = disk.total / (1024 ** 3)
+        used_gb = disk.used / (1024 ** 3)
+        free_gb = disk.free / (1024 ** 3)
+        usage_percent = (disk.used / disk.total) * 100
+
+        print(f"\n    Directory :  {os.path.abspath(directory)}" )
+        print(f"      Total :      {total_gb:.2f} GB")
+        print(f"      Used :       {used_gb:.2f} GB")
+        print(f"      Free :       {free_gb:.2f} GB")
+        print(f"      Usage :      {usage_percent:.1f}%")
+
+        if usage_percent >= 90:
+            print("\n[!] WARNING: Disk usage is critically high")
+        elif usage_percent >= 80:
+            print("\n[!] Warning Disk Usage is high")
+        else:
+            print("\n[+] Disk usage is within the configured warning limits")  
+
+
+        report = {
+            **info,
+            "Checked Directory": os.path.abspath(directory),
+            "Disk Total Gb": round(total_gb, 2),
+            "Disk Used Gb": round(used_gb, 2),
+            "Disk Free Gb": round(free_gb, 2),
+            "Disk Usage percent": round(usage_percent, 1)
+        }
+
+        save_report = input(
+            "\n Save diagnostics report as JSON (y/n): " 
+        ).strip().lower()     
+
+        if save_report == "y":
+            report_path = input(
+                "Enter report filename: "
+
+            ).strip()
+
+        if not report_path:
+            report_path = "system_report.json"
+
+        if not report_path.lower().endswith(".json"):
+            report_path += ".json"
+
+        with open(report_path, "w", encoding="utf-8") as file:
+            json.dump(report,  file, indent=4)
+
+        print(f"\n[+] Report saved to: {os.path.abspath(report_path)}")
+
+    except (OSError, ValueError) as error:
+        print(f"\n[-] Could not compelete diagnostics: {error}")
+
+    print("\n[+] System diagnostics complete\n")
+
+def analyze_file():
+    filepath = input("\n[+] Enter Path to target binary/file: ").strip()
+    if not os.path.isfile(filepath):
+        print("[-] Error: file path does not exist!\n")                             
+        return   
+
     file_size = os.path.getsize(filepath)
     print(f"\n[>] Target file: {os.path.basename(filepath)}")
     print(f"   Full Path: {filepath}")
     print(f"    Size:      {file_size} bytes ({round(file_size / 1024, 2)} KB)")
    
     md5_hash = hashlib.md5()
-    sha256_hash = hashlib.sha256()
+    sha256_hash = hashlib.sha256()  
 
     with open(filepath, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):    
@@ -730,7 +825,7 @@ def extract_strings():
             else:
                 if len(current) >= min_len:
                     if ip_pattern.findall(current):
-                        found_ips.update(ip_pattern.findall(current))
+                        found_ips.update(ip_pattern.findall(current))                          
                     if url_pattern.findall(current):
                         found_urls.update(url_pattern.findall(current))
                 current = ""
@@ -792,8 +887,7 @@ def disassemble_bytes():
     except ValueError:
         print("[-] Invalid Hex Strings!\n")
         return
-                           
-
+                
     arch = input("[+] Select Architecture (32/64) [default 64]: ").strip()
     mode = CS_MODE_32 if arch == "32" else CS_MODE_64
 
@@ -803,10 +897,7 @@ def disassemble_bytes():
         print(f"   0x{insn.address:x}\t{insn.mnemonic}\t{insn.op_str}")
     print()
 
-
-# sub menu
-
-    
+# sub menu              
 
 def re_toolkit_menu():
     while True:
@@ -822,11 +913,12 @@ def re_toolkit_menu():
         print("9. File Signature detection.")   
         print("10. YARA-Lite Static Scanner")   
         print("11. TCP Port scanner")     
-        print("12. Log File Analyzer")              
-        print("13. Back to Main Menu.")      
+        print("12. Log File Analyzer")    
+        print("13. System Information & Diagnostics")          
+        print("14. Back to Main Menu.")      
          
    
-        choice = input("\nSelect an option (1-13): ").strip()    
+        choice = input("\nSelect an option (1-14): ").strip()      
 
         if choice == "1":
             analyze_file()
@@ -844,7 +936,7 @@ def re_toolkit_menu():
             parse_pe_headers()
 
         elif choice == "6":
-            disassemble_bytes()   
+            disassemble_bytes()
 
         elif choice == "7":
             file_integrity_check() 
@@ -852,8 +944,8 @@ def re_toolkit_menu():
         elif choice == "8":    
             compare_file_hashes() 
 
-        elif choice =="9":       
-            detect_file_signature() 
+        elif choice =="9":      
+            detect_file_signature()
 
         elif choice == "10":
             yara_lite_scanner() 
@@ -864,7 +956,10 @@ def re_toolkit_menu():
         elif choice == "12":
             log_file_analyzer()
 
-        elif choice == "13":  
+        elif choice == "13":
+            system_information()
+            
+        elif choice == "14":  
             break
         else:
             print("[!] Invalid selection, try again!")
